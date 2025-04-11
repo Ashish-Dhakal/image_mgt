@@ -20,6 +20,8 @@ class MediaPicker extends Field
     
     protected ?int $categoryId = null;
     
+    protected bool $shouldShowPreview = true;
+    
     public function multiple(bool $isMultiple = true): static
     {
         $this->isMultiple = $isMultiple;
@@ -48,6 +50,13 @@ class MediaPicker extends Field
         return $this;
     }
     
+    public function showPreview(bool $shouldShowPreview = true): static
+    {
+        $this->shouldShowPreview = $shouldShowPreview;
+        
+        return $this;
+    }
+    
     public function isMultiple(): bool
     {
         return $this->isMultiple;
@@ -68,6 +77,11 @@ class MediaPicker extends Field
         return $this->categoryId;
     }
     
+    public function shouldShowPreview(): bool
+    {
+        return $this->shouldShowPreview;
+    }
+    
     public function getImages(): array
     {
         $query = Image::query();
@@ -84,5 +98,31 @@ class MediaPicker extends Field
                 'alt' => $image->image_alitext,
             ])
             ->toArray();
+    }
+    
+    public function getSelectedImage(): ?array
+    {
+        if (!$this->getState()) {
+            return null;
+        }
+
+        $imageId = $this->isMultiple() ? $this->getState()[0] ?? null : $this->getState();
+        
+        if (!$imageId) {
+            return null;
+        }
+
+        $image = Image::find($imageId);
+        
+        if (!$image) {
+            return null;
+        }
+
+        return [
+            'id' => $image->id,
+            'name' => $image->image_name,
+            'url' => Storage::url($image->image_path),
+            'alt' => $image->image_alitext,
+        ];
     }
 } 
