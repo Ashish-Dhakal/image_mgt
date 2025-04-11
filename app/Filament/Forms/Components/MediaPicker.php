@@ -102,11 +102,13 @@ class MediaPicker extends Field
     
     public function getSelectedImage(): ?array
     {
-        if (!$this->getState()) {
+        $state = $this->getState();
+        
+        if (!$state) {
             return null;
         }
 
-        $imageId = $this->isMultiple() ? $this->getState()[0] ?? null : $this->getState();
+        $imageId = $this->isMultiple() ? ($state[0] ?? null) : $state;
         
         if (!$imageId) {
             return null;
@@ -124,5 +126,26 @@ class MediaPicker extends Field
             'url' => Storage::url($image->image_path),
             'alt' => $image->image_alitext,
         ];
+    }
+
+    public function getSelectedImages(): array
+    {
+        $state = $this->getState();
+        
+        if (!$state) {
+            return [];
+        }
+
+        $imageIds = $this->isMultiple() ? $state : [$state];
+        
+        return Image::whereIn('id', $imageIds)
+            ->get()
+            ->map(fn (Image $image) => [
+                'id' => $image->id,
+                'name' => $image->image_name,
+                'url' => Storage::url($image->image_path),
+                'alt' => $image->image_alitext,
+            ])
+            ->toArray();
     }
 } 

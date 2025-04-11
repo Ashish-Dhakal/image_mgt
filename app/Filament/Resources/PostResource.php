@@ -31,11 +31,33 @@ class PostResource extends Resource
                 Forms\Components\TextInput::make('title')
                     ->required()
                     ->maxLength(255),
-                MediaPicker::make('image_id')
-                    ->label('Featured Image')
-                    ->helperText('Select an image from the media library')
-                    ->searchable()
-                    ->preload(),
+                Forms\Components\Grid::make(2)
+                    ->schema([
+                        MediaPicker::make('image_id')
+                            ->label('Featured Image')
+                            ->helperText('Select an image from the media library')
+                            ->searchable()
+                            ->preload()
+                            ->columnSpan(1),
+                        Forms\Components\Placeholder::make('preview')
+                            ->label('Image Preview')
+                            ->content(function ($get) {
+                                $imageId = $get('image_id');
+                                if (!$imageId) {
+                                    return null;
+                                }
+                                
+                                $image = \App\Models\Image::find($imageId);
+                                if (!$image) {
+                                    return null;
+                                }
+                                
+                                return view('filament.forms.components.image-preview', [
+                                    'image' => $image,
+                                ]);
+                            })
+                            ->columnSpan(1),
+                    ]),
                 Forms\Components\RichEditor::make('content')
                     ->required()
                     ->columnSpanFull(),

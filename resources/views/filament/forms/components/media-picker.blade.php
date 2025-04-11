@@ -6,19 +6,31 @@
         x-data="{
             selectedImages: @entangle($getStatePath()),
             images: @js($getImages()),
+            selectedImagesData: @js($getSelectedImages()),
             isMultiple: @js($isMultiple()),
             isSearchable: @js($isSearchable()),
             isPreloaded: @js($isPreloaded()),
             showPreview: @js($shouldShowPreview()),
-            selectedImage: @js($getSelectedImage()),
             searchQuery: '',
             isModalOpen: false,
             currentPage: 1,
             perPage: 30,
             totalPages: 1,
+            tempSelectedImage: null,
             
             init() {
                 this.totalPages = Math.ceil(this.images.length / this.perPage);
+                this.$watch('selectedImages', (value) => {
+                    if (value) {
+                        if (this.isMultiple) {
+                            this.selectedImagesData = this.images.filter(img => value.includes(img.id));
+                        } else {
+                            this.selectedImagesData = this.images.filter(img => img.id === value);
+                        }
+                    } else {
+                        this.selectedImagesData = [];
+                    }
+                });
             },
             
             get filteredImages() {
@@ -41,35 +53,30 @@
                 ).length;
             },
             
-            toggleImage(image) {
-                if (this.isMultiple) {
-                    if (!this.selectedImages) this.selectedImages = [];
-                    const index = this.selectedImages.indexOf(image.id);
-                    if (index === -1) {
-                        this.selectedImages.push(image.id);
-                    } else {
-                        this.selectedImages.splice(index, 1);
-                    }
-                } else {
-                    this.selectedImages = image.id;
-                    this.selectedImage = image;
+            selectImage(image) {
+                this.tempSelectedImage = image;
+            },
+            
+            confirmSelection() {
+                if (this.tempSelectedImage) {
+                    this.selectedImages = this.tempSelectedImage.id;
+                    this.closeModal();
                 }
             },
             
             isSelected(image) {
-                if (this.isMultiple) {
-                    return this.selectedImages?.includes(image.id) ?? false;
-                }
-                return this.selectedImages === image.id;
+                return this.tempSelectedImage?.id === image.id;
             },
             
             openModal() {
                 this.isModalOpen = true;
                 this.currentPage = 1;
+                this.tempSelectedImage = this.selectedImagesData[0] || null;
             },
             
             closeModal() {
                 this.isModalOpen = false;
+                this.tempSelectedImage = null;
             },
             
             nextPage() {
@@ -90,43 +97,22 @@
         <div class="flex items-start space-x-4">
             <div class="flex-1">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                    <template x-if="selectedImages">
-                        <template x-if="isMultiple">
-                            <template x-for="imageId in selectedImages" :key="imageId">
-                                <div class="relative group">
-                                    <img 
-                                        :src="images.find(img => img.id === imageId)?.url" 
-                                        :alt="images.find(img => img.id === imageId)?.alt"
-                                        class="w-full h-32 object-cover rounded-lg"
-                                    >
-                                    <button
-                                        @click="toggleImage(images.find(img => img.id === imageId))"
-                                        class="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                </div>
-                            </template>
-                        </template>
-                        <template x-if="!isMultiple && selectedImages">
-                            <div class="relative group">
-                                <img 
-                                    :src="selectedImage?.url" 
-                                    :alt="selectedImage?.alt"
-                                    class="w-full h-32 object-cover rounded-lg"
-                                >
-                                <button
-                                    @click="toggleImage(selectedImage)"
-                                    class="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </template>
+                    <template x-if="selectedImagesData.length > 0">
+                        <div class="relative group">
+                            <img 
+                                :src="selectedImagesData[0]?.url" 
+                                :alt="selectedImagesData[0]?.alt"
+                                class="w-full h-32 object-cover rounded-lg"
+                            >
+                            <button
+                                @click="selectedImages = null"
+                                class="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
                     </template>
                 </div>
             </div>
@@ -203,7 +189,7 @@
                                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
                                     <template x-for="image in filteredImages" :key="image.id">
                                         <div
-                                            @click="toggleImage(image)"
+                                            @click="selectImage(image)"
                                             class="relative cursor-pointer group"
                                             :class="{ 'ring-2 ring-primary-500': isSelected(image) }"
                                         >
@@ -230,7 +216,7 @@
                                 </div>
                             </div>
 
-                            <!-- Pagination -->
+                            <!-- Footer with Select Button -->
                             <div class="px-4 py-3 border-t border-gray-200">
                                 <div class="flex items-center justify-between">
                                     <div class="flex-1 flex justify-between sm:hidden">
@@ -261,7 +247,7 @@
                                                 results
                                             </p>
                                         </div>
-                                        <div>
+                                        <div class="flex items-center space-x-4">
                                             <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                                                 <button
                                                     @click="previousPage()"
@@ -284,6 +270,13 @@
                                                     </svg>
                                                 </button>
                                             </nav>
+                                            <button
+                                                @click="confirmSelection()"
+                                                :disabled="!tempSelectedImage"
+                                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Select Image
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
